@@ -1,0 +1,133 @@
+# Tests every push, then publishes a ready-to-run copy of the app to the "deploy" branch.
+# The cPanel hosting has no terminal (no composer, no npm), so the deploy branch already contains
+# vendor/ and the built pages in public/build. cPanel → Git Version Control pulls that branch.
+
+name: Test and release
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  test:
+    name: Tests (${{ matrix.database }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        database: [sqlite, mysql]
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: attendance_test
+        ports: ['3306:3306']
+        options: >-
+          --health-cmd="mysqladmin ping -proot"
+          --health-interval=5s --health-timeout=5s --health-retries=20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mbstring, pdo_sqlite, pdo_mysql, gd, zip, intl, fileinfo, sockets
+          coverage: none
+
+      - run: composer install --no-interaction --prefer-dist --no-progress
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+
+      - run: cp .env.example .env && php artisan key:generate
+
+      - name: Run tests
+        run: php artisan test --compact
+        env:
+          DB_CONNECTION: ${{ matrix.database }}
+          DB_DATABASE: ${{ matrix.database == 'mysql' && 'attendance_test' || ':memory:' }}
+          DB_HOST: 127.0.0.1
+          DB_PORT: 3306
+          DB_USERNAME: root
+          DB_PASSWORD: root
+
+  release:
+    name: Publish deploy branch
+    needs: test
+    if: github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: source
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mbstring, gd, zip, intl, fileinfo
+          coverage: none
+
+      - name: Production PHP packages
+        working-directory: source
+        run: composer install --no-dev --optimize-autoloader --no-interaction --prefer-dist --no-progress
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: source/package-lock.json
+      - name: Build pages
+        working-directory: source
+        run: npm ci && npm run build
+
+      - name: Check out the deploy branch
+        env:
+          REPO: https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
+        run: |
+          if git ls-remote --exit-code --heads "$REPO" deploy >/dev/null; then
+            git clone --branch deploy --single-branch "$REPO" release
+          else
+            git init -b deploy release
+            git -C release remote add origin "$REPO"
+          fi
+
+      - name: Copy the app into it
+        run: |
+          rsync -a --delete \
+            --exclude='.git/' --exclude='node_modules/' --exclude='tests/' --exclude='.github/' \
+            --exclude='.claude/' --exclude='.mcp.json' --exclude='boost.json' --exclude='tools/' \
+            --exclude='storage/app/*' --exclude='storage/logs/*' --exclude='storage/framework/*/*' \
+            --exclude='bootstrap/cache/*.php' --exclude='*.bat' \
+            source/ release/
+          # Empty runtime folders Laravel expects (kept by their .gitignore files).
+          for d in storage/app/private storage/app/public storage/framework/cache/data storage/framework/sessions storage/framework/views storage/logs bootstrap/cache; do
+            mkdir -p "release/$d"
+            [ -e "release/$d/.gitignore" ] || printf '*\n!.gitignore\n' > "release/$d/.gitignore"
+          done
+
+      - name: Commit and push
+        working-directory: release
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git add -f vendor public/build
+          if git diff --cached --quiet; then
+            echo "Nothing changed."
+            exit 0
+          fi
+          git commit -q -m "Release ${GITHUB_SHA::7}: $(git -C ../source log -1 --pretty=%s)"
+          git push origin deploy
