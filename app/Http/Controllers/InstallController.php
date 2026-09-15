@@ -83,6 +83,10 @@ class InstallController extends Controller
             ['Database is up to date', $dbError === null && $pending === [], $pending ? count($pending).' update(s) to run: press “Set up / update database”.' : ''],
             ['Debug mode is off', ! config('app.debug'), 'Set APP_DEBUG=false in .env (shows errors to everyone otherwise).'],
             ['Records pages open online', ! config('attendance.admin_localhost_only'), 'Set ATTENDANCE_ADMIN_LOCALHOST_ONLY=false in .env.'],
+            ['APP_URL has no trailing slash', ! str_ends_with((string) config('app.url'), '/'), 'Remove the “/” at the end of APP_URL in .env.'],
+            ['Site opened over https', $request->isSecure(), 'cPanel → SSL/TLS Status → select the domain → Run AutoSSL, then open this page with https://.'],
+            ['HTTPS enforced', ! $request->isSecure() || (config('attendance.force_https') && config('session.secure')),
+                'The certificate works: set FORCE_HTTPS=true and SESSION_SECURE_COOKIE=true in .env.'],
         ];
 
         return view('install', [

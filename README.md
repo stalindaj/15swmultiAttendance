@@ -101,26 +101,34 @@ ready-to-run copy — including `vendor/` and `public/build/` — to the **`depl
 
 **First time**
 
-1. **PHP:** cPanel → *MultiPHP Manager* → PHP **8.3** or 8.4 for the domain. *Select PHP Version →
-   Extensions*: pdo_mysql, mbstring, openssl, fileinfo, zip, gd, xml, dom, simplexml, zlib, iconv, ctype (intl if listed).
+1. **PHP:** cPanel → *Select PHP Version* (account-wide): **8.3.x** or newer. *Extensions*: pdo_mysql,
+   mbstring, openssl, fileinfo, zip, gd, xml, dom, simplexml, zlib, iconv, ctype (intl if listed).
+   *Options*: upload_max_filesize ≥ 8M, post_max_size ≥ 20M, memory_limit ≥ 256M.
 2. **Database:** cPanel → *MySQL Databases* → create a database and a user, and add the user to the
-   database with **ALL PRIVILEGES**.
-3. **Code:** cPanel → *Git Version Control* → *Create* → clone the GitHub repo, branch **`deploy`**,
-   into e.g. `/home/ACCOUNT/attendance` (not inside `public_html`). Private repo: use an HTTPS clone
-   URL with a GitHub token (`https://TOKEN@github.com/OWNER/REPO.git`), or add cPanel's SSH key to the repo as a deploy key.
-4. **Address:** cPanel → *Domains* → create e.g. `attendance.yourdomain.com` with document root
-   **`/home/ACCOUNT/attendance/public`**. Turn on *Force HTTPS Redirect* (AutoSSL gives the certificate).
-5. **Settings:** File Manager → in `/home/ACCOUNT/attendance` copy `.env.production.example` to
-   **`.env`** and fill in `APP_URL`, `DB_DATABASE`, `DB_USERNAME`, `DB_PASSWORD`, and a long random `INSTALL_TOKEN`.
-6. Open **`https://attendance.yourdomain.com/install?token=YOUR_INSTALL_TOKEN`**: paste the APP_KEY it
-   shows into `.env`, press **Set up / update database**, create the **records account**.
-   Then clear `INSTALL_TOKEN` in `.env` (the page disappears).
-7. Log in, upload the PSR on **Roster**, create the phone accounts on **Accounts**. Phones open the
+   database with **ALL PRIVILEGES**. Save the password.
+3. **Code:** cPanel → *Git Version Control* → *Create* → clone URL of the GitHub repo (private repo:
+   `https://TOKEN@github.com/OWNER/REPO.git` with a read-only fine-grained token), repository path
+   `public_html/attendance`. Then *Manage* → *Checked-Out Branch* → **`deploy`**.
+4. **Address:** cPanel → *Domains* → create e.g. `attendance.15thstrikewing.mil.ph` with document root
+   **`public_html/attendance/public`** — the public/ folder, never the app folder. The app folder's
+   `.htaccess` blocks everything outside public/: **never delete it**.
+5. **Settings:** File Manager (*Show Hidden Files*) → in `public_html/attendance` copy
+   `.env.production.example` to **`.env`** and fill in `APP_URL` (no trailing slash), `DB_DATABASE`,
+   `DB_USERNAME`, `DB_PASSWORD` (in double quotes), and a long random `INSTALL_TOKEN`.
+6. Open **`https://<domain>/install?token=YOUR_INSTALL_TOKEN`**: paste the APP_KEY it shows into
+   `.env`, press **Set up / update database**, create the **records account**.
+7. **SSL:** cPanel → *SSL/TLS Status* → *Run AutoSSL*. Only once the certificate is issued, set
+   `FORCE_HTTPS=true` and `SESSION_SECURE_COOKIE=true` (earlier locks you out). Then blank `INSTALL_TOKEN`.
+8. Log in, upload the PSR on **Roster**, create the phone accounts on **Accounts**. Phones open the
    site address (QR code on the dashboard) and log in.
+
+Check: `https://<main domain>/attendance/.env` must answer **403**. A 500 with no detail →
+`storage/logs/laravel.log` (times in UTC).
 
 **Updating:** push to `main` → wait for the GitHub Action to finish → cPanel → *Git Version Control* →
 *Manage* → *Pull or Deploy* → **Update from Remote**. If the dashboard then shows *“This version needs
-a database update”*, press **Update now**.
+a database update”*, press **Update now**. If a page errors before you get there, set `INSTALL_TOKEN`,
+open `/install?token=…`, press **Set up / update database**, and blank the token again.
 
 Back up the MySQL database with cPanel → *Backup* (or phpMyAdmin → Export).
 
