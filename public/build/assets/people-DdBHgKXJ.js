@@ -1,0 +1,1 @@
+const o=s=>[s?.rank,s?.name].filter(Boolean).join(" "),a=s=>[s?.squadron,s?.office,s?.serial&&`SN ${s.serial}`].filter(Boolean).join(" · "),e=s=>s?.psr_status&&s.psr_status!=="ON DUTY";export{a,e as o,o as p};

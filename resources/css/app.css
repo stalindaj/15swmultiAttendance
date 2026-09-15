@@ -1,0 +1,73 @@
+@import 'tailwindcss';
+
+@source '../views/**/*.blade.php';
+@source '../js/**/*.jsx';
+
+@theme {
+    /* System fonts only: the laptop may have no internet at the event. */
+    --font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+    --font-mono: ui-monospace, Consolas, 'Cascadia Mono', monospace;
+
+    --color-navy: #1f3864;
+    --color-navy-700: #172b4d;
+    --color-ink: #16202e;
+    --color-muted: #5d6b7e;
+    --color-line: #dde3ea;
+    --color-canvas: #f3f5f8;
+
+    --color-ok: #117a3d;
+    --color-ok-soft: #e3f6ea;
+    --color-dup: #1d5fa8;
+    --color-dup-soft: #e4eefb;
+    --color-warn: #9a5b00;
+    --color-warn-soft: #fff3d6;
+    --color-bad: #b3261e;
+    --color-bad-soft: #fde7e5;
+    --color-out: #c2610c;
+    --color-out-soft: #fdebd8;
+
+    /* Scanner (phone) screen */
+    --color-night: #0f1722;
+}
+
+@layer base {
+    body {
+        @apply bg-canvas text-ink;
+    }
+    button:not(:disabled) {
+        cursor: pointer;
+    }
+}
+
+@layer components {
+    .btn {
+        @apply inline-flex items-center justify-center gap-1.5 rounded-lg border border-line bg-white px-3.5 py-2 text-sm font-semibold text-ink hover:border-slate-400 disabled:cursor-default disabled:opacity-50;
+    }
+    .btn-sm {
+        @apply px-2.5 py-1 text-xs;
+    }
+    .btn-primary {
+        @apply border-navy bg-navy text-white hover:border-navy-700 hover:bg-navy-700;
+    }
+    .btn-ok {
+        @apply border-ok bg-ok text-white hover:border-ok;
+    }
+    .btn-danger {
+        @apply text-bad;
+    }
+    .input {
+        @apply min-w-0 rounded-lg border border-line bg-white px-3 py-2 text-sm text-ink outline-none focus:border-navy focus:ring-2 focus:ring-navy/15;
+    }
+    .panel {
+        @apply overflow-hidden rounded-xl border border-line bg-white;
+    }
+    .panel-head {
+        @apply flex flex-wrap items-center gap-2 border-b border-line px-4 py-3;
+    }
+    .th {
+        @apply sticky top-0 bg-slate-50 px-3 py-2 text-left text-xs font-semibold tracking-wide text-muted uppercase;
+    }
+    .td {
+        @apply border-b border-line px-3 py-2 align-top;
+    }
+}

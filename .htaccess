@@ -1,0 +1,11 @@
+# Only used if the web root points at this project folder instead of public/ (point it at
+# public/ when you can). Sends every request into public/, so .env, vendor/ and the rest of the
+# app are never served.
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteRule ^(.*)$ public/$1 [L]
+</IfModule>
+
+<FilesMatch "^(\.env.*|composer\.(json|lock)|package(-lock)?\.json|artisan|phpunit\.xml)$">
+    Require all denied
+</FilesMatch>

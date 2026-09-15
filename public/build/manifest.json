@@ -1,0 +1,80 @@
+{
+  "_AdminLayout-DkunndHs.js": {
+    "file": "assets/AdminLayout-DkunndHs.js",
+    "name": "AdminLayout",
+    "imports": [
+      "resources/js/app.jsx"
+    ]
+  },
+  "_people-DdBHgKXJ.js": {
+    "file": "assets/people-DdBHgKXJ.js",
+    "name": "people"
+  },
+  "resources/js/Pages/Accounts.jsx": {
+    "file": "assets/Accounts-BsUDiZyw.js",
+    "name": "Accounts",
+    "src": "resources/js/Pages/Accounts.jsx",
+    "isDynamicEntry": true,
+    "imports": [
+      "resources/js/app.jsx",
+      "_AdminLayout-DkunndHs.js"
+    ]
+  },
+  "resources/js/Pages/Auth/Login.jsx": {
+    "file": "assets/Login-9M_3Czn3.js",
+    "name": "Login",
+    "src": "resources/js/Pages/Auth/Login.jsx",
+    "isDynamicEntry": true,
+    "imports": [
+      "resources/js/app.jsx"
+    ]
+  },
+  "resources/js/Pages/Dashboard.jsx": {
+    "file": "assets/Dashboard-C8ycAgX_.js",
+    "name": "Dashboard",
+    "src": "resources/js/Pages/Dashboard.jsx",
+    "isDynamicEntry": true,
+    "imports": [
+      "resources/js/app.jsx",
+      "_AdminLayout-DkunndHs.js",
+      "_people-DdBHgKXJ.js"
+    ]
+  },
+  "resources/js/Pages/Roster.jsx": {
+    "file": "assets/Roster-Cl0TcVs5.js",
+    "name": "Roster",
+    "src": "resources/js/Pages/Roster.jsx",
+    "isDynamicEntry": true,
+    "imports": [
+      "resources/js/app.jsx",
+      "_AdminLayout-DkunndHs.js",
+      "_people-DdBHgKXJ.js"
+    ]
+  },
+  "resources/js/Pages/Scan.jsx": {
+    "file": "assets/Scan-BgJx_lZV.js",
+    "name": "Scan",
+    "src": "resources/js/Pages/Scan.jsx",
+    "isDynamicEntry": true,
+    "imports": [
+      "resources/js/app.jsx",
+      "_people-DdBHgKXJ.js"
+    ]
+  },
+  "resources/js/app.jsx": {
+    "file": "assets/app-CnKrUVT0.js",
+    "name": "app",
+    "src": "resources/js/app.jsx",
+    "isEntry": true,
+    "dynamicImports": [
+      "resources/js/Pages/Accounts.jsx",
+      "resources/js/Pages/Auth/Login.jsx",
+      "resources/js/Pages/Dashboard.jsx",
+      "resources/js/Pages/Roster.jsx",
+      "resources/js/Pages/Scan.jsx"
+    ],
+    "css": [
+      "assets/app-DqcVnBSy.css"
+    ]
+  }
+}
