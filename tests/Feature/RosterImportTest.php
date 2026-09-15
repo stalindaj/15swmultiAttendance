@@ -89,7 +89,7 @@ class RosterImportTest extends TestCase
     {
         $this->seedRoster();
         $gate = $this->scanner();
-        $this->actingAs($gate)->postJson('/scan/record', ['qr_text' => 'CHR SANTOS, CEIS']);
+        $this->actingAs($gate)->postJson('/scan/record', ['event_id' => $this->makeEvent()->id, 'qr_text' => 'CHR SANTOS, CEIS']);
 
         $this->actingAs($this->admin());
         $file = new UploadedFile($this->psrWorkbook(), 'psr.xlsx', null, null, true);

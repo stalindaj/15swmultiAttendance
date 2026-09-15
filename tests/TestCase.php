@@ -2,6 +2,7 @@
 
 namespace Tests;
 
+use App\Models\Event;
 use App\Models\Personnel;
 use App\Models\User;
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
@@ -22,6 +23,15 @@ abstract class TestCase extends BaseTestCase
     protected function scanner(string $name = 'Gate 1', string $username = 'gate1'): User
     {
         return User::factory()->create(['name' => $name, 'username' => $username]);
+    }
+
+    /** An open event whose attendee list is everyone on the roster right now. */
+    protected function makeEvent(array $attributes = []): Event
+    {
+        $event = Event::factory()->create($attributes);
+        $event->attendees()->attach(Personnel::where('is_walk_in', false)->pluck('id'));
+
+        return $event;
     }
 
     /** A small roster shaped like the 15SW Daily PSR. */

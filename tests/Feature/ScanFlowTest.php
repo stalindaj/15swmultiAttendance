@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\Event;
 use App\Models\Personnel;
 use App\Models\QrLink;
 use App\Models\Scan;
@@ -16,14 +17,23 @@ class ScanFlowTest extends TestCase
 {
     use RefreshDatabase;
 
+    /** Created on the first scan, listing everyone on the roster at that moment. */
+    private ?Event $event = null;
+
     private function scan(string $qr, array $extra = [])
     {
-        return $this->postJson('/scan/record', ['qr_text' => $qr, 'client_id' => $extra['client_id'] ?? uniqid('c', true)] + $extra);
+        $this->event ??= $this->makeEvent();
+
+        return $this->postJson('/scan/record', [
+            'event_id' => $this->event->id,
+            'qr_text' => $qr,
+            'client_id' => $extra['client_id'] ?? uniqid('c', true),
+        ] + $extra);
     }
 
     private function pendingOnDashboard($admin): array
     {
-        return $this->actingAs($admin)->get('/')->inertiaProps('pending');
+        return $this->actingAs($admin)->get("/events/{$this->event->id}")->inertiaProps('pending');
     }
 
     public function test_unknown_id_is_recorded_as_pending_and_waits_for_the_records_pc(): void
@@ -101,7 +111,7 @@ class ScanFlowTest extends TestCase
         $at('13:00:00')->assertJson(['status' => 'ok', 'kind' => 'IN']);        // back in after going out: not a duplicate
         $at('17:00:00', 'OUT')->assertJson(['status' => 'ok']);
 
-        $this->actingAs($this->admin())->get('/')->assertInertia(fn (Assert $page) => $page
+        $this->actingAs($this->admin())->get("/events/{$this->event->id}")->assertInertia(fn (Assert $page) => $page
             ->where('stats.present', 1)
             ->where('stats.inside', 0));                                        // last scan was TIME OUT
     }
@@ -229,19 +239,22 @@ class ScanFlowTest extends TestCase
     public function test_mark_present_and_absent_lists_use_the_psr_status(): void
     {
         $r = $this->seedRoster();
+        $event = $this->makeEvent();
         $admin = $this->admin();
 
-        $this->actingAs($admin)->post("/present/{$r['ocana']->id}")->assertSessionHas('success');
+        $this->actingAs($admin)->post("/events/{$event->id}/present/{$r['ocana']->id}")->assertSessionHas('success');
 
-        $this->actingAs($admin)->get('/')
+        $this->actingAs($admin)->get("/events/{$event->id}")
             ->assertInertia(fn (Assert $page) => $page
-                ->component('Dashboard')
+                ->component('Events/Show')
+                ->where('stats.expected', 6)
                 ->where('stats.present', 1)
                 ->where('stats.excused', 1)          // A2C Dela Cruz is DEPLOYED per PSR
                 ->where('stats.unaccounted', 4)
                 ->missing('absent')                  // optional prop: only sent when asked for
                 ->reloadOnly('absent', fn (Assert $reload) => $reload
                     ->has('absent.unaccounted', 4)
-                    ->has('absent.excused', 1)));
+                    ->has('absent.excused', 1)
+                    ->has('absent.extras', 0)));
     }
 }

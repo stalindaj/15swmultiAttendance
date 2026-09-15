@@ -14,12 +14,13 @@ use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
 class ExcelExport
 {
-    public function build(AttendanceReport $r, string $event): Spreadsheet
+    public function build(AttendanceReport $r): Spreadsheet
     {
         $book = new Spreadsheet;
         $book->removeSheetByIndex(0);
+        $title = $r->event->label();
 
-        $this->checklist($book, $r, $event);
+        $this->checklist($book, $r, $title);
 
         $rows = [];
         $totals = ['total' => 0, 'present' => 0, 'excused' => 0, 'unaccounted' => 0];
@@ -30,21 +31,22 @@ class ExcelExport
             }
         }
         $rows[] = ['TOTAL', $totals['total'], $totals['present'], $totals['excused'], $totals['unaccounted'], $this->pct($totals['present'], $totals['total'])];
-        $ws = $this->sheet($book, 'Summary', ['Squadron', 'Roster', 'Present', 'Excused per PSR', 'Unaccounted', '% present'], $rows, [22, 10, 10, 16, 13, 11], 3);
-        $ws->setCellValue('A1', "$event — {$r->day}");
+        $ws = $this->sheet($book, 'Summary', ['Squadron', 'On list', 'Present', 'Excused per PSR', 'Unaccounted', '% present'], $rows, [22, 10, 10, 16, 13, 11], 3);
+        $ws->setCellValue('A1', $title);
         $ws->getStyle('A1')->getFont()->setBold(true)->setSize(14);
-        $ws->setCellValue('A2', 'Walk-ins present (not in roster): '.$r->walkInsPresent()->count()
+        $ws->setCellValue('A2', 'Extras present (not on the list): '.$r->extras()->count()
             .'   ·   Scans not yet confirmed: '.$r->pendingScans()->count().' (see "To confirm")');
         $ws->getStyle('A'.$ws->getHighestRow().':F'.$ws->getHighestRow())->getFont()->setBold(true);
 
         $person = fn (Personnel $p) => [$p->rank, $p->full_name, $p->squadron, $p->office, $p->serial];
 
         $present = collect($r->present)->keys()->map(fn ($id) => $r->people[$id])
-            ->sortBy([['is_walk_in', 'asc'], ['squadron', 'asc'], ['surname', 'asc']]);
-        $this->sheet($book, 'Present', ['#', 'Rank', 'Name', 'Squadron', 'Office', 'SN', 'First in', 'Last out', 'Status now', 'Scans', 'Station', 'Walk-in'],
+            ->sortBy([fn ($a, $b) => $r->isOnList($b) <=> $r->isOnList($a), ['squadron', 'asc'], ['surname', 'asc']]);
+        $this->sheet($book, 'Present', ['#', 'Rank', 'Name', 'Squadron', 'Office', 'SN', 'First in', 'Last out', 'Status now', 'Scans', 'Station', 'On list'],
             $present->values()->map(fn ($p, $i) => [$i + 1, ...$person($p), $r->present[$p->id]['in'], $r->present[$p->id]['out'],
-                $r->present[$p->id]['status'], $r->present[$p->id]['moves'], $r->present[$p->id]['station'], $p->is_walk_in ? 'yes' : ''])->all(),
-            [6, 10, 32, 12, 14, 12, 10, 10, 11, 7, 14, 8]);
+                $r->present[$p->id]['status'], $r->present[$p->id]['moves'], $r->present[$p->id]['station'],
+                $r->isOnList($p) ? 'yes' : ($p->is_walk_in ? 'walk-in' : 'not on list')])->all(),
+            [6, 10, 32, 12, 14, 12, 10, 10, 11, 7, 14, 11]);
 
         $this->sheet($book, 'Unaccounted', ['#', 'Rank', 'Name', 'Squadron', 'Office', 'SN', 'PSR status'],
             $r->unaccounted()->values()->map(fn ($p, $i) => [$i + 1, ...$person($p), $p->psr_status])->all(),
@@ -76,17 +78,19 @@ class ExcelExport
      * One row per person: a ✓ under Absent or under Present, ready to print.
      *   # | Rank | Name | Squadron | Absent | Present | Remarks
      */
-    private function checklist(Spreadsheet $book, AttendanceReport $r, string $event): void
+    private function checklist(Spreadsheet $book, AttendanceReport $r, string $title): void
     {
         $check = '✓';
-        $people = $r->roster()->values()->concat($r->walkInsPresent()->values());
+        $people = $r->roster()->values()->concat($r->extras()->values());
 
         $rows = $people->map(function (Personnel $p, $i) use ($r, $check) {
             $row = $r->present[$p->id] ?? null;
             if ($row) {
                 $remarks = trim(($row['in'] ? 'In '.substr($row['in'], 0, 5) : '')
                     .($row['status'] === 'OUT' && $row['out'] ? ' · out '.substr($row['out'], 0, 5) : ''), ' ·');
-                $remarks .= $p->is_walk_in ? ($remarks ? ' · ' : '').'Walk-in' : '';
+                if (! $r->isOnList($p)) {
+                    $remarks .= ($remarks ? ' · ' : '').($p->is_walk_in ? 'Walk-in' : 'Not on list');
+                }
             } else {
                 $remarks = $p->isExpectedPresent() ? '' : $p->psr_status;   // e.g. DEPLOYED, ORD LEAVE
             }
@@ -95,9 +99,9 @@ class ExcelExport
         })->all();
 
         $ws = $this->sheet($book, 'Checklist', ['#', 'Rank', 'Name', 'Squadron', 'Absent', 'Present', 'Remarks'], $rows, [6, 10, 34, 12, 10, 10, 26], 3);
-        $ws->setCellValue('A1', "$event — {$r->day}");
+        $ws->setCellValue('A1', $title);
         $ws->getStyle('A1')->getFont()->setBold(true)->setSize(14);
-        $ws->setCellValue('A2', 'Remarks: time in for those present; PSR status (deployed, leave…) for those absent.');
+        $ws->setCellValue('A2', 'Remarks: time in for those present (extras at the end: not on the list); PSR status (deployed, leave…) for those absent.');
         $ws->getStyle('A2')->getFont()->setItalic(true)->getColor()->setARGB('FF5D6B7E');
 
         $first = 4;
@@ -127,7 +131,7 @@ class ExcelExport
         $ws->getPageSetup()->setOrientation(PageSetup::ORIENTATION_PORTRAIT)->setFitToWidth(1)->setFitToHeight(0)
             ->setRowsToRepeatAtTopByStartAndEnd(3, 3);
         $ws->getPageMargins()->setTop(0.5)->setBottom(0.5)->setLeft(0.4)->setRight(0.4);
-        $ws->getHeaderFooter()->setOddFooter('&L'.$event.' — '.$r->day.'&RPage &P of &N');
+        $ws->getHeaderFooter()->setOddFooter('&L'.$title.'&RPage &P of &N');
     }
 
     public function save(Spreadsheet $book, string $path): void

@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\Event;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Inertia\Testing\AssertableInertia as Assert;
@@ -52,11 +53,15 @@ class AccountsAndAccessTest extends TestCase
     public function test_phone_accounts_cannot_open_records_pages(): void
     {
         $gate = $this->scanner();
+        $event = Event::factory()->create();
 
         $this->actingAs($gate)->get('/')->assertRedirect('/scan');
         $this->actingAs($gate)->get('/accounts')->assertRedirect('/scan');
-        $this->actingAs($gate)->get('/export')->assertRedirect('/scan');
+        $this->actingAs($gate)->get("/events/{$event->id}")->assertRedirect('/scan');
+        $this->actingAs($gate)->get("/events/{$event->id}/export")->assertRedirect('/scan');
+        $this->actingAs($gate)->post('/events', ['name' => 'Sneaky', 'event_date' => '2026-09-17'])->assertRedirect('/scan');
         $this->actingAs($gate)->getJson('/search?q=dela')->assertForbidden();
+        $this->assertSame(1, Event::count());
     }
 
     public function test_records_pages_stay_on_the_pc_even_for_the_admin(): void

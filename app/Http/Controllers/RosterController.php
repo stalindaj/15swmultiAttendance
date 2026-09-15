@@ -9,6 +9,7 @@ use App\Services\WriteLock;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Arr;
 use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
 use RuntimeException;
@@ -88,7 +89,7 @@ class RosterController extends Controller
             return response()->json(['error' => $e->getMessage()], 422);
         }
 
-        return response()->json(['ok' => true] + $stats);
+        return response()->json(['ok' => true] + Arr::except($stats, 'ids'));
     }
 
     public function addPerson(Request $request): JsonResponse

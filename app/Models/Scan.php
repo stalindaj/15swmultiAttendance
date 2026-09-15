@@ -15,4 +15,9 @@ class Scan extends Model
     {
         return $this->belongsTo(Personnel::class);
     }
+
+    public function event(): BelongsTo
+    {
+        return $this->belongsTo(Event::class);
+    }
 }

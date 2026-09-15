@@ -2,7 +2,13 @@ import { router } from '@inertiajs/react';
 import { useMemo, useState } from 'react';
 import { Panel } from '../ui';
 
-export default function AbsentTable({ absent }) {
+const TABS = [
+    ['unaccounted', 'Unaccounted'],
+    ['excused', 'Excused per PSR'],
+    ['extras', 'Extras (not on list)'],
+];
+
+export default function AbsentTable({ eventId, absent }) {
     const [tab, setTab] = useState('unaccounted');
     const [filter, setFilter] = useState('');
 
@@ -12,22 +18,20 @@ export default function AbsentTable({ absent }) {
         return f ? list.filter((p) => [p.rank, p.name, p.squadron, p.office, p.serial, p.psr_status].join(' ').toLowerCase().includes(f)) : list;
     }, [absent, tab, filter]);
 
-    const tabBtn = (key, label) => (
-        <button
-            onClick={() => setTab(key)}
-            className={`rounded-lg px-2.5 py-1.5 text-sm font-semibold ${tab === key ? 'bg-slate-100 text-ink' : 'text-muted'}`}
-        >
-            {label} {absent && `(${absent[key].length})`}
-        </button>
-    );
-
     return (
         <Panel
-            title="Not yet scanned"
+            title={tab === 'extras' ? 'Came, but not on the list' : 'On the list, not yet scanned'}
             actions={
                 <>
-                    {tabBtn('unaccounted', 'Unaccounted')}
-                    {tabBtn('excused', 'Excused per PSR')}
+                    {TABS.map(([key, label]) => (
+                        <button
+                            key={key}
+                            onClick={() => setTab(key)}
+                            className={`rounded-lg px-2.5 py-1.5 text-sm font-semibold ${tab === key ? 'bg-slate-100 text-ink' : 'text-muted'}`}
+                        >
+                            {label} {absent && `(${absent[key].length})`}
+                        </button>
+                    ))}
                     <input className="input" type="search" placeholder="Filter name, squadron, office…" value={filter} onChange={(e) => setFilter(e.target.value)} />
                 </>
             }
@@ -48,9 +52,11 @@ export default function AbsentTable({ absent }) {
                                 <td className="td">{p.office}</td>
                                 <td className="td">{p.psr_status}</td>
                                 <td className="td">
-                                    <button className="btn btn-sm" onClick={() => router.post(`/present/${p.id}`, {}, { preserveScroll: true })}>
-                                        Mark present
-                                    </button>
+                                    {tab !== 'extras' && (
+                                        <button className="btn btn-sm" onClick={() => router.post(`/events/${eventId}/present/${p.id}`, {}, { preserveScroll: true })}>
+                                            Mark present
+                                        </button>
+                                    )}
                                 </td>
                             </tr>
                         ))}

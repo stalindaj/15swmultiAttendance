@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Personnel;
 use App\Models\QrLink;
 use App\Models\Scan;
+use App\Support\NameMatcher;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -227,20 +228,27 @@ class RosterImporter
         return WriteLock::run(fn () => DB::transaction(fn () => $this->importRows($rows, $headerIdx, $mapping, $mode, $fixedSquadron)));
     }
 
+    /**
+     * @return array{added: int, updated: int, skipped: int, not_found: int, ids: list<int>}
+     */
     private function importRows(array $rows, int $headerIdx, array $mapping, string $mode, string $fixedSquadron): array
     {
         $headerCells = $headerIdx >= 0 ? array_filter(array_map('strtoupper', $rows[$headerIdx])) : [];
-        $stats = ['added' => 0, 'updated' => 0, 'skipped' => 0, 'not_found' => 0];
+        $stats = ['added' => 0, 'updated' => 0, 'skipped' => 0, 'not_found' => 0, 'ids' => []];
 
         if ($mode === 'replace') {
-            if (Scan::exists()) {
-                throw new RuntimeException('Scans are already recorded. Delete all scans on the dashboard first, or use “Add / update”.');
+            if (Scan::exists() || DB::table('event_attendees')->exists()) {
+                throw new RuntimeException('Events already use these people. Use “Add / update” instead of replacing everyone.');
             }
             QrLink::query()->delete();
             Personnel::query()->delete();
         }
 
-        $bySerial = Personnel::where('serial', '!=', '')->get()->keyBy(fn ($p) => Personnel::serialKey($p->serial));
+        $everyone = Personnel::all();
+        $bySerial = $everyone->where('serial', '!=', '')->keyBy(fn ($p) => Personnel::serialKey($p->serial));
+        // Lists without serial numbers: the same rank + full name is the same person.
+        $nameKey = fn (Personnel $p) => NameMatcher::rankKey($p->rank).'|'.$p->name_key;
+        $byName = $everyone->keyBy($nameKey);
 
         foreach (array_slice($rows, $headerIdx + 1) as $r) {
             $data = [];
@@ -268,10 +276,13 @@ class RosterImporter
                 $data['squadron'] = $fixedSquadron;
             }
 
-            $existing = ($data['serial'] ?? '') !== '' ? $bySerial->get(Personnel::serialKey($data['serial'])) : null;
-            if ($existing) {   // same SN seen before (in the roster, or earlier in this file)
+            $existing = ($data['serial'] ?? '') !== ''
+                ? $bySerial->get(Personnel::serialKey($data['serial']))
+                : $byName->get($nameKey((new Personnel($data))->fillDerived()));
+            if ($existing) {   // same person seen before (in the roster, or earlier in this file)
                 $existing->fill(array_filter($data, 'strlen'))->save();
                 $stats['updated']++;
+                $stats['ids'][] = $existing->id;
             } elseif ($mode === 'update') {
                 $stats['not_found']++;
             } else {
@@ -279,9 +290,12 @@ class RosterImporter
                 if ($p->serial !== '') {
                     $bySerial->put(Personnel::serialKey($p->serial), $p);
                 }
+                $byName->put($nameKey($p), $p);
                 $stats['added']++;
+                $stats['ids'][] = $p->id;
             }
         }
+        $stats['ids'] = array_values(array_unique($stats['ids']));
 
         return $stats;
     }
