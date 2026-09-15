@@ -1,11 +1,13 @@
-# Only used if the web root points at this project folder instead of public/ (point it at
-# public/ when you can). Sends every request into public/, so .env, vendor/ and the rest of the
-# app are never served.
+# LOAD-BEARING — never delete. On this hosting the whole app folder (including .env) sits inside
+# public_html. The domain's document root must be the public/ folder; this file makes sure that
+# nothing else in the app folder can ever be fetched from the web (e.g. via the main domain).
+Options -Indexes
+
 <IfModule mod_rewrite.c>
     RewriteEngine On
-    RewriteRule ^(.*)$ public/$1 [L]
+    RewriteRule ^(?!public(/|$)) - [F,L]
 </IfModule>
 
-<FilesMatch "^(\.env.*|composer\.(json|lock)|package(-lock)?\.json|artisan|phpunit\.xml)$">
+<FilesMatch "^\.(env|git)">
     Require all denied
 </FilesMatch>

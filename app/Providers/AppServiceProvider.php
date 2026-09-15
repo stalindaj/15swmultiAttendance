@@ -28,7 +28,7 @@ class AppServiceProvider extends ServiceProvider
         // Relative asset URLs: the same page is served on localhost, the Wi-Fi address and the tunnel address.
         Vite::createAssetPathsUsing(fn (string $path) => '/'.ltrim($path, '/'));
 
-        // Online, every link and redirect is https (phones need it for the camera).
-        URL::forceHttps($this->app->isProduction());
+        // Online, every link and redirect is https (phones need it for the camera) once the certificate exists.
+        URL::forceHttps(config('attendance.force_https'));
     }
 }

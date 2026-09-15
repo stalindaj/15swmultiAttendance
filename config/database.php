@@ -58,7 +58,8 @@ return [
             'prefix' => '',
             'prefix_indexes' => true,
             'strict' => true,
-            'engine' => null,
+            // InnoDB: transactions for scan recording, and no "key too long" on hosts defaulting to MyISAM.
+            'engine' => env('DB_ENGINE', 'InnoDB'),
             'options' => extension_loaded('pdo_mysql') ? array_filter([
                 Mysql::ATTR_SSL_CA => env('MYSQL_ATTR_SSL_CA'),
             ]) : [],
@@ -78,7 +79,8 @@ return [
             'prefix' => '',
             'prefix_indexes' => true,
             'strict' => true,
-            'engine' => null,
+            // InnoDB: transactions for scan recording, and no "key too long" on hosts defaulting to MyISAM.
+            'engine' => env('DB_ENGINE', 'InnoDB'),
             'options' => extension_loaded('pdo_mysql') ? array_filter([
                 Mysql::ATTR_SSL_CA => env('MYSQL_ATTR_SSL_CA'),
             ]) : [],
