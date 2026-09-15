@@ -19,23 +19,29 @@ class Personnel extends Model
 
     protected static function booted(): void
     {
-        static::saving(function (Personnel $p) {
-            foreach (['rank', 'surname', 'first_name', 'middle', 'full_name', 'serial', 'squadron', 'office', 'psr_status'] as $f) {
-                // 191 = MySQL string column length; a long spreadsheet cell must not break the import.
-                $p->{$f} = mb_substr(trim(preg_replace('/\s+/', ' ', (string) $p->{$f})), 0, 191);
-            }
-            if ($p->surname === '' && str_contains($p->full_name, ',')) {
-                $p->surname = trim(explode(',', $p->full_name, 2)[0]);   // "SANTOS, JUAN MIGUEL R"
-            }
-            if ($p->full_name === '') {
-                $mi = strlen($p->middle) > 2 ? substr($p->middle, 0, 1).'.' : $p->middle;
-                $p->full_name = trim(implode(' ', array_filter([$p->first_name, $mi, $p->surname], 'strlen')));
-            }
-            $p->surname_key = NameMatcher::surnameKey($p->surname);
-            $p->name_key = NameMatcher::norm($p->full_name);
-            $p->squadron_key = NameMatcher::squash($p->squadron);
-            $p->office_key = NameMatcher::squash($p->office);
-        });
+        static::saving(fn (Personnel $p) => $p->fillDerived());
+    }
+
+    /** Tidies the fields and computes the full name and the matching keys (also usable before saving). */
+    public function fillDerived(): static
+    {
+        foreach (['rank', 'surname', 'first_name', 'middle', 'full_name', 'serial', 'squadron', 'office', 'psr_status'] as $f) {
+            // 191 = MySQL string column length; a long spreadsheet cell must not break the import.
+            $this->{$f} = mb_substr(trim(preg_replace('/\s+/', ' ', (string) $this->{$f})), 0, 191);
+        }
+        if ($this->surname === '' && str_contains($this->full_name, ',')) {
+            $this->surname = trim(explode(',', $this->full_name, 2)[0]);   // "SANTOS, JUAN MIGUEL R"
+        }
+        if ($this->full_name === '') {
+            $mi = strlen($this->middle) > 2 ? substr($this->middle, 0, 1).'.' : $this->middle;
+            $this->full_name = trim(implode(' ', array_filter([$this->first_name, $mi, $this->surname], 'strlen')));
+        }
+        $this->surname_key = NameMatcher::surnameKey($this->surname);
+        $this->name_key = NameMatcher::norm($this->full_name);
+        $this->squadron_key = NameMatcher::squash($this->squadron);
+        $this->office_key = NameMatcher::squash($this->office);
+
+        return $this;
     }
 
     public function scans(): HasMany

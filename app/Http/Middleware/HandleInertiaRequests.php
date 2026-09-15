@@ -2,7 +2,6 @@
 
 namespace App\Http\Middleware;
 
-use App\Models\Setting;
 use App\Support\DatabaseStatus;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
@@ -42,7 +41,7 @@ class HandleInertiaRequests extends Middleware
         return [
             ...parent::share($request),
             'auth' => ['user' => $user ? ['id' => $user->id, 'name' => $user->name, 'email' => $user->email] : null],
-            'event' => fn () => Setting::eventName(),
+            'appName' => config('app.name'),
             // After a new version is deployed the records account gets an "Update database" button.
             'pendingMigrations' => fn () => $user?->isAdmin() ? count(app(DatabaseStatus::class)->pendingMigrations()) : 0,
             'flash' => [

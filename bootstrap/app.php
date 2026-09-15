@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Middleware\EnsureAccountActive;
+use App\Http\Middleware\EnsureDatabaseIsCurrent;
 use App\Http\Middleware\HandleInertiaRequests;
 use App\Http\Middleware\LaptopOnly;
 use App\Http\Middleware\RequireAdmin;
@@ -29,6 +30,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'laptop' => LaptopOnly::class,
             'admin' => RequireAdmin::class,
+            'db.current' => EnsureDatabaseIsCurrent::class,
         ]);
         $middleware->redirectGuestsTo('/login');
         $middleware->redirectUsersTo('/');

@@ -59,8 +59,35 @@ function ResultOverlay({ result, onClose }) {
     );
 }
 
+function EventChooser({ events, onChoose }) {
+    return (
+        <div className="px-3.5 pb-6">
+            <h2 className="mb-1 text-lg font-bold">Which event are you scanning for?</h2>
+            <p className="mb-3 text-sm text-slate-400">Every scan from this phone goes to the event you pick. You can change it any time.</p>
+            <div className="grid gap-2">
+                {events.map((e) => (
+                    <button key={e.id} onClick={() => onChoose(e.id)} className="rounded-xl bg-white/10 px-4 py-4 text-left hover:bg-white/15">
+                        <div className="text-lg font-extrabold">{e.name}</div>
+                        <div className="text-sm text-slate-300">{e.date}</div>
+                    </button>
+                ))}
+                {!events.length && (
+                    <div className="rounded-xl bg-white/10 px-4 py-4 text-slate-200">
+                        No event is open for scanning. Ask the records office to create or open one; this list updates by itself.
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+}
+
 export default function Scan() {
-    const { auth, event } = usePage().props;
+    const { auth, appName, events: initialEvents } = usePage().props;
+    const [events, setEvents] = useState(initialEvents);
+    const [eventId, setEventIdState] = useState(() => stored('eventId', null));
+    const currentEvent = events.find((e) => e.id === eventId) ?? null;
+    const eventRef = useRef(currentEvent);
+    eventRef.current = currentEvent;
     const [mode, setModeState] = useState(() => stored('mode', 'IN'));
     const [history, setHistory] = useState(() => stored('history', []));
     const [result, setResult] = useState(null);
@@ -79,6 +106,11 @@ export default function Scan() {
         setModeState(m);
         modeRef.current = m;
         store('mode', m);
+    };
+
+    const setEventId = (id) => {
+        setEventIdState(id);
+        store('eventId', id);
     };
 
     const addHistory = useCallback((res) => {
@@ -103,14 +135,15 @@ export default function Scan() {
 
     const onCode = useCallback(async (text, method) => {
         text = (text || '').trim();
-        if (!text || pausedRef.current) return;
+        const event = eventRef.current;
+        if (!text || pausedRef.current || !event) return;
         const now = Date.now();
         if (text === lastRef.current.text && now - lastRef.current.at < 4000) return;   // same card still in front of the camera
         lastRef.current = { text, at: now };
         pausedRef.current = true;
 
         showResult({ status: 'sending' });
-        const res = await sendScan({ client_id: uid(), qr_text: text, kind: modeRef.current, method, client_ts: now });
+        const res = await sendScan({ client_id: uid(), event_id: event.id, qr_text: text, kind: modeRef.current, method, client_ts: now });
         showResult(res);
         feedback(res.status);
         addHistory(res);
@@ -158,7 +191,7 @@ export default function Scan() {
         let stopped = false;
         const loop = async () => {
             const video = videoRef.current;
-            if (stopped || !streamRef.current) return;
+            if (stopped || !streamRef.current || !video) return;
             if (!pausedRef.current && video.readyState >= 2) {
                 try {
                     const text = await decodeQr(video, video.videoWidth, video.videoHeight);
@@ -209,7 +242,8 @@ export default function Scan() {
     useEffect(() => {
         const beat = async () => {
             try {
-                await axios.get('/scan/ping', { timeout: 6000 });
+                const { data } = await axios.get('/scan/ping', { timeout: 6000 });
+                setEvents(data.events);   // an event opened or closed on the records PC
                 if (queuedCount()) {
                     setNet({ state: 'online', queued: queuedCount() });
                     (await flushQueue()).forEach(addHistory);
@@ -225,6 +259,20 @@ export default function Scan() {
         return () => clearInterval(t);
     }, [addHistory]);
 
+    const changeEvent = () => {
+        wantCameraRef.current = false;
+        stopCamera();
+        setEventId(null);
+    };
+
+    // The chosen event was closed on the records PC: back to the event list.
+    useEffect(() => {
+        if (!currentEvent && streamRef.current) {
+            wantCameraRef.current = false;
+            stopCamera();
+        }
+    }, [currentEvent]);
+
     const netLabel = {
         online: net.queued ? `● Sending ${net.queued}…` : '● Online',
         offline: `● No signal${net.queued ? ` · ${net.queued} saved` : ''}`,
@@ -236,8 +284,15 @@ export default function Scan() {
             <Head title="Scanner" />
             <header className="flex items-center gap-2 px-3.5 pt-[max(10px,env(safe-area-inset-top))] pb-2.5">
                 <div className="min-w-0 flex-1">
-                    <div className="truncate text-xs text-slate-400">{event}</div>
-                    <div className="truncate font-bold">📱 {auth.user?.name}</div>
+                    <div className="truncate text-xs text-slate-400">{appName} · 📱 {auth.user?.name}</div>
+                    {currentEvent ? (
+                        <button className="flex max-w-full items-center gap-1.5 text-left font-bold" onClick={changeEvent} title="Change event">
+                            <span className="truncate">{currentEvent.name}</span>
+                            <span className="shrink-0 rounded-full bg-white/10 px-2 text-xs font-semibold">change</span>
+                        </button>
+                    ) : (
+                        <div className="font-bold">Choose an event</div>
+                    )}
                 </div>
                 <span className={`text-sm font-semibold whitespace-nowrap ${net.state === 'online' ? 'text-green-400' : 'text-red-300'}`}>{netLabel}</span>
                 <button className="rounded-full bg-white/10 px-3 py-1 text-xs" onClick={() => confirm('Log out this phone?') && router.post('/logout')}>
@@ -252,6 +307,9 @@ export default function Scan() {
                 </div>
             )}
 
+            {!currentEvent && <EventChooser events={events} onChoose={setEventId} />}
+
+            {currentEvent && <>
             <div className="grid grid-cols-2 gap-2 px-3.5 pb-2.5">
                 {['IN', 'OUT'].map((m) => (
                     <button
@@ -296,6 +354,7 @@ export default function Scan() {
                     ))}
                 </ul>
             </main>
+            </>}
 
             <ResultOverlay
                 result={result}

@@ -27,6 +27,7 @@ export default function LiveScans({ recent }) {
                                 <Pill tone={STATUS_TONE[s.status]}>{s.status}</Pill>
                                 {s.person && [s.person.squadron, s.person.office].filter(Boolean).join(' · ')}
                                 {s.person?.walk_in && <Pill tone="warn">walk-in</Pill>}
+                                {s.person && !s.person.walk_in && !s.on_list && <Pill tone="warn">not on list</Pill>}
                                 {s.auto && <span title={`Matched automatically from “${s.qr_text}”. Wrong? Click Change.`}><Pill tone="dup">auto</Pill></span>}
                                 <span>· {s.station}{s.method && ` (${s.method})`}</span>
                             </div>

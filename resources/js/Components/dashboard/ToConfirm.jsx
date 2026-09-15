@@ -37,6 +37,7 @@ function Candidate({ c, officeMatch, qrRank, recommended, onConfirm }) {
                     {offDuty(c) && ` · PSR: ${c.psr_status}`}
                 </span>
             </span>
+            {c.on_list && <Pill tone="ok">on list</Pill>}
             {officeMatch && <Pill tone="ok">office match</Pill>}
             {c.rank_match && <Pill tone="dup">rank match</Pill>}
             {c.first_match && <Pill tone="dup">first name match</Pill>}

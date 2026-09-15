@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Event;
 use App\Models\Personnel;
 use App\Services\ScanService;
 use App\Support\NameMatcher;
@@ -21,20 +22,21 @@ class StationController extends Controller
 
     public function page(): InertiaResponse
     {
-        return Inertia::render('Scan');
+        return Inertia::render('Scan', ['events' => $this->openEvents()]);
     }
 
-    /** Cheap keep-alive: tells the phone it is online and refreshes its session/CSRF cookies. */
+    /** Keep-alive: tells the phone it is online, which events are open, and refreshes its cookies. */
     public function ping(Request $request): JsonResponse
     {
         Cache::put("last_seen:{$request->user()->id}", now()->format('H:i:s'), now()->addHours(12));
 
-        return response()->json(['ok' => true, 'server_time' => now()->format('Y-m-d H:i:s')]);
+        return response()->json(['ok' => true, 'server_time' => now()->format('Y-m-d H:i:s'), 'events' => $this->openEvents()]);
     }
 
     public function record(Request $request): JsonResponse
     {
         $data = $request->validate([
+            'event_id' => 'required|integer|exists:events,id',
             'client_id' => 'nullable|string|max:64',
             'qr_text' => 'required|string|max:191',
             'kind' => 'nullable|string',
@@ -46,6 +48,7 @@ class StationController extends Controller
         // Phones send their own clock. Use it only as an offset, so a scan that sat in an
         // offline queue keeps the time it was actually made even if the phone clock is wrong.
         $at = now();
+        $age = 0;
         if (isset($data['client_ts'], $data['client_now'])) {
             $age = ($data['client_now'] - $data['client_ts']) / 1000;
             if ($age >= 0 && $age < 3 * 86400) {
@@ -53,8 +56,15 @@ class StationController extends Controller
             }
         }
 
+        // A closed event takes no new scans, but scans a phone saved offline while it was open still count.
+        $event = Event::find($data['event_id']);
+        if (! $event->is_open && $age < 60) {
+            return response()->json(['status' => 'error', 'message' => "“{$event->name}” is closed. Choose another event."], 422);
+        }
+
         $user = $request->user();
         $result = $this->scans->record([
+            'event_id' => $event->id,
             'client_id' => $data['client_id'] ?? null,
             'qr_text' => trim($data['qr_text']),
             'personnel_id' => null,
@@ -67,6 +77,16 @@ class StationController extends Controller
         ], $at);
 
         return response()->json($this->forPhone($result));
+    }
+
+    /**
+     * Events phones can scan into, most recent first.
+     *
+     * @return list<array{id: int, name: string, date: string, label: string, is_open: bool}>
+     */
+    private function openEvents(): array
+    {
+        return Event::where('is_open', true)->orderByDesc('event_date')->orderByDesc('id')->get()->map->card()->all();
     }
 
     /** A phone only needs the name to show. SN and PSR status stay on the records PC. */

@@ -41,12 +41,13 @@ function UpdateDatabaseBanner({ count }) {
 }
 
 export default function AdminLayout({ children, toolbar }) {
-    const { auth, event, pendingMigrations } = usePage().props;
+    const { auth, appName, pendingMigrations } = usePage().props;
     const { url } = usePage();
+    const path = url.split('?')[0];
     const nav = (href, label) => (
         <Link
             href={href}
-            className={`rounded-lg px-3 py-1.5 text-sm font-semibold text-white ${url.split('?')[0] === href ? 'bg-white/25' : 'bg-white/10 hover:bg-white/20'}`}
+            className={`rounded-lg px-3 py-1.5 text-sm font-semibold text-white ${(href === '/' ? path === '/' || path.startsWith('/events') : path === href) ? 'bg-white/25' : 'bg-white/10 hover:bg-white/20'}`}
         >
             {label}
         </Link>
@@ -56,11 +57,11 @@ export default function AdminLayout({ children, toolbar }) {
         <div className="min-h-screen">
             <header className="flex flex-wrap items-center gap-x-4 gap-y-2 bg-navy px-5 py-2.5 text-white">
                 <h1 className="text-lg font-bold">Attendance</h1>
-                <span className="hidden text-sm text-white/70 sm:inline">{event}</span>
+                <span className="hidden text-sm text-white/70 sm:inline">{appName}</span>
                 {toolbar}
                 <nav className="ml-auto flex flex-wrap items-center gap-1.5">
-                    {nav('/', 'Dashboard')}
-                    {nav('/roster', 'Roster')}
+                    {nav('/', 'Events')}
+                    {nav('/roster', 'People')}
                     {nav('/accounts', 'Accounts')}
                     <button
                         onClick={() => router.post('/logout')}

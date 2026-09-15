@@ -1,7 +1,7 @@
 import { Head, useForm, usePage } from '@inertiajs/react';
 
 export default function Login() {
-    const { event } = usePage().props;
+    const { appName } = usePage().props;
     const { data, setData, post, processing, errors } = useForm({ username: '', password: '', remember: true });
 
     const submit = (e) => {
@@ -13,7 +13,7 @@ export default function Login() {
         <div className="grid min-h-dvh place-items-center bg-canvas px-4">
             <Head title="Log in" />
             <form onSubmit={submit} className="w-full max-w-sm rounded-2xl border border-line bg-white p-6 shadow-sm">
-                <h1 className="text-xl font-bold text-navy">{event}</h1>
+                <h1 className="text-xl font-bold text-navy">{appName}</h1>
                 <p className="mb-5 text-sm text-muted">Log in with this phone's account (e.g. gate1), or the records account on the PC.</p>
 
                 <label className="mb-3 grid gap-1 text-sm font-semibold">

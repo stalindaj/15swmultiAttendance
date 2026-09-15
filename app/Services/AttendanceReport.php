@@ -2,15 +2,19 @@
 
 namespace App\Services;
 
+use App\Models\Event;
 use App\Models\Personnel;
 use App\Models\Scan;
 use Illuminate\Support\Collection;
 
-/** Who is present / absent on a given day, shared by the dashboard and the Excel export. */
+/** Who is present / absent at one event, shared by the event dashboard and the Excel export. */
 class AttendanceReport
 {
-    /** @var Collection<int, Personnel> */
+    /** Everyone on the attendee list plus everyone who scanned in. @var Collection<int, Personnel> */
     public Collection $people;
+
+    /** personnel_id => true for everyone on the event's attendee list. */
+    public array $onList = [];
 
     /** @var Collection<int, Scan> */
     public Collection $scans;
@@ -21,10 +25,14 @@ class AttendanceReport
      */
     public array $present = [];
 
-    public function __construct(public string $day)
+    public function __construct(public Event $event)
     {
-        $this->people = Personnel::orderBy('squadron')->orderBy('surname')->orderBy('first_name')->get()->keyBy('id');
-        $this->scans = Scan::where('day', $day)->orderBy('scanned_at')->orderBy('id')->get();
+        $this->scans = Scan::where('event_id', $event->id)->orderBy('scanned_at')->orderBy('id')->get();
+        $attendeeIds = $event->attendees()->pluck('personnel.id')->all();
+        $this->onList = array_fill_keys($attendeeIds, true);
+
+        $ids = array_unique(array_merge($attendeeIds, $this->scans->pluck('personnel_id')->filter()->all()));
+        $this->people = Personnel::whereIn('id', $ids)->orderBy('squadron')->orderBy('surname')->orderBy('first_name')->get()->keyBy('id');
 
         foreach ($this->scans as $s) {
             if ($s->status !== 'ok' || $s->personnel_id === null || ! $this->people->has($s->personnel_id)) {
@@ -50,9 +58,10 @@ class AttendanceReport
         return count(array_filter($this->present, fn ($r) => $r['status'] === 'IN'));
     }
 
+    /** The event's attendee list. */
     public function roster(): Collection
     {
-        return $this->people->where('is_walk_in', false);
+        return $this->people->filter(fn (Personnel $p) => isset($this->onList[$p->id]));
     }
 
     public function isPresent(Personnel $p): bool
@@ -60,21 +69,27 @@ class AttendanceReport
         return isset($this->present[$p->id]);
     }
 
-    /** Not scanned and the PSR says they should be here. */
+    public function isOnList(Personnel $p): bool
+    {
+        return isset($this->onList[$p->id]);
+    }
+
+    /** On the list, not scanned, and the PSR says they should be here. */
     public function unaccounted(): Collection
     {
         return $this->roster()->filter(fn ($p) => ! $this->isPresent($p) && $p->isExpectedPresent());
     }
 
-    /** Not scanned but the PSR already accounts for them (deployed, leave, schooling...). */
+    /** On the list, not scanned, but the PSR already accounts for them (deployed, leave, schooling...). */
     public function excused(): Collection
     {
         return $this->roster()->filter(fn ($p) => ! $this->isPresent($p) && ! $p->isExpectedPresent());
     }
 
-    public function walkInsPresent(): Collection
+    /** Came, but not on the attendee list (including walk-ins not in the roster at all). */
+    public function extras(): Collection
     {
-        return $this->people->where('is_walk_in', true)->filter(fn ($p) => $this->isPresent($p));
+        return $this->people->filter(fn ($p) => $this->isPresent($p) && ! $this->isOnList($p));
     }
 
     public function bySquadron(): array
@@ -123,5 +138,22 @@ class AttendanceReport
     public function pendingScans(): Collection
     {
         return $this->scans->where('status', 'pending');
+    }
+
+    /**
+     * @return array{expected: int, present: int, excused: int, unaccounted: int, extras: int, inside: int}
+     */
+    public function stats(): array
+    {
+        $roster = $this->roster();
+
+        return [
+            'expected' => $roster->count(),
+            'present' => $roster->filter(fn ($p) => $this->isPresent($p))->count(),
+            'excused' => $this->excused()->count(),
+            'unaccounted' => $this->unaccounted()->count(),
+            'extras' => $this->extras()->count(),
+            'inside' => $this->insideNow(),
+        ];
     }
 }
