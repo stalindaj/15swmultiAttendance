@@ -55,8 +55,9 @@ class EventTest extends TestCase
         $r = $this->seedRoster();
         $this->actingAs($this->admin());
 
-        $this->post('/events', ['name' => 'SAFETY MEETING', 'event_date' => '2026-09-17'])->assertRedirect('/events/1');
+        $response = $this->post('/events', ['name' => 'SAFETY MEETING', 'event_date' => '2026-09-17']);
         $event = Event::sole();
+        $response->assertRedirect("/events/{$event->id}");   // MySQL keeps counting ids across tests: don't assume 1
 
         $result = $this->uploadList($event, [
             ['MAJ', 'VILLAFUERTE', 'RAMON', 'O', 'O-10001'],          // already in the roster (same SN)

@@ -54,8 +54,13 @@ jobs:
 
       - run: cp .env.example .env && php artisan key:generate
 
+      # Failures are also written as annotations, which can be read without signing in to GitHub.
       - name: Run tests
-        run: php artisan test --compact
+        run: |
+          php artisan test --compact --log-junit junit.xml || {
+            php -r '$x = simplexml_load_file("junit.xml"); foreach ($x->xpath("//testcase[failure or error]") as $t) { $m = (string) (count($t->failure) ? $t->failure : $t->error); echo "::error title=", $t["name"], "::", str_replace(["%", "\r", "\n"], ["%25", "%0D", "%0A"], substr($m, 0, 2000)), PHP_EOL; }'
+            exit 1
+          }
         env:
           DB_CONNECTION: ${{ matrix.database }}
           DB_DATABASE: ${{ matrix.database == 'mysql' && 'attendance_test' || ':memory:' }}
