@@ -40,7 +40,7 @@ class RosterImporter
         'first_name' => ['firstname', 'givenname', 'fname', 'first', 'given'],
         'middle' => ['middlename', 'middleinitial', 'mi', 'mname', 'middle'],
         'rank' => ['rank', 'grade'],
-        'serial' => ['serialnumber', 'serialno', 'sn', 'afpsn', 'serial', 'idno', 'idnumber', 'employeeno', 'empno', 'badge'],
+        'serial' => ['serialnumber', 'serialno', 'sn', 'afpsn', 'afsn', 'serial', 'idno', 'idnumber', 'employeeno', 'empno', 'badge'],
         'squadron' => ['squadron', 'sqdn', 'sqd', 'unit'],
         'office' => ['office', 'section', 'department', 'dept', 'division', 'assignment'],
         'psr_status' => ['status', 'psrstatus'],

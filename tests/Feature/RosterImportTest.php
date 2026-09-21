@@ -75,6 +75,32 @@ class RosterImportTest extends TestCase
         $this->assertSame('DEPLOYED', Personnel::where('serial', 'O-10001')->value('psr_status'));
     }
 
+    public function test_roster_of_troops_updates_people_by_afsn_and_keeps_their_offices(): void
+    {
+        $r = $this->seedRoster();
+        $r['villafuerte']->update(['office' => 'ODCEIS']);
+        $this->actingAs($this->admin());
+
+        $book = new Spreadsheet;
+        $book->getActiveSheet()->setTitle('ROSTER OF TROOPS')->fromArray([
+            ['NR', 'RANK', 'LASTNAME', 'FIRSTNAME', 'MI', 'AFSN', 'BOS', 'GENDER', 'UNIT', 'CATEGORY', 'DESIGNATION BASED ON TO-2025', 'SQUADRON', 'RANK/NAME/SN/BOS'],
+            [1, 'LTC', 'VILLAFUERTE', 'RAMON', 'O', 'O-10001', 'PAF', 'MALE', '15SW', 'OFFICER', 'Group Commander', '460AMG', 'LTC RAMON O VILLAFUERTE O-10001 PAF'],
+        ]);
+        $path = tempnam(sys_get_temp_dir(), 'rot').'.xlsx';
+        (new Xlsx($book))->save($path);
+        $token = $this->postJson('/roster/upload', ['file' => new UploadedFile($path, 'Roster of Troops.xlsx', null, null, true)])->json('token');
+
+        $preview = $this->getJson("/roster/preview/{$token}?sheet=ROSTER%20OF%20TROOPS")->assertOk()->json();
+        $this->assertSame('AFSN', $preview['headers'][$preview['mapping']['serial']]);
+
+        $this->postJson('/roster/import', [
+            'token' => $token, 'sheet' => 'ROSTER OF TROOPS', 'header_row' => $preview['header_row'],
+            'mapping' => $preview['mapping'], 'mode' => 'upsert',
+        ])->assertOk()->assertJson(['added' => 0, 'updated' => 1]);
+
+        $this->assertSame(['LTC', '460AMG', 'ODCEIS'], [$r['villafuerte']->fresh()->rank, $r['villafuerte']->fresh()->squadron, $r['villafuerte']->fresh()->office]);
+    }
+
     public function test_old_xls_files_get_a_clear_message(): void
     {
         $this->actingAs($this->admin());
