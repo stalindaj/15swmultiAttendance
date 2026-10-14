@@ -26,6 +26,15 @@ export default function AttendeeList({ event, fields, expected, attendees, start
         setShowList(!showList);
     };
 
+    const clearList = () => {
+        if (confirm(`Take all ${expected} people off this event's list? Their scans are kept, and you can upload a new list.`)) {
+            router.post(`/events/${event.id}/attendees/clear`, {}, {
+                preserveScroll: true,
+                onSuccess: () => router.reload({ only: ['stats', 'bySquadron', 'absent', 'attendees'] }),
+            });
+        }
+    };
+
     const remove = (p) => {
         if (confirm(`Remove ${personLine(p)} from this event's list?`)) {
             router.delete(`/events/${event.id}/attendees/${p.id}`, { preserveScroll: true, onSuccess: () => router.reload({ only: ['attendees'] }) });
@@ -39,6 +48,7 @@ export default function AttendeeList({ event, fields, expected, attendees, start
             actions={
                 <>
                     {expected > 0 && <button className="btn btn-sm" onClick={toggleList}>{showList ? 'Hide list' : 'Show list'}</button>}
+                    {expected > 0 && <button className="btn btn-sm btn-danger" onClick={clearList} title="Empty this event's list">Clear list</button>}
                     <button className={`btn btn-sm ${open ? '' : 'btn-primary'}`} onClick={() => setOpen(!open)}>{open ? 'Close upload' : 'Upload list'}</button>
                 </>
             }

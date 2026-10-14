@@ -103,8 +103,13 @@ class EventController extends Controller
             'serverTime' => fn () => now()->format('H:i:s'),
             // Only loaded when the page asks for them (router.reload({ only: [...] })).
             'absent' => Inertia::optional(fn () => [
-                'unaccounted' => $report()->unaccounted()->values()->map->card(),
-                'excused' => $report()->excused()->sortBy('psr_status')->values()->map->card(),
+                // One list on screen; the export is what separates excused from unaccounted.
+                'absent' => $report()->absent()->values()->map->card(),
+                'present' => $report()->presentPeople()->values()->map(fn ($p) => $p->card() + [
+                    'time' => $report()->present[$p->id]['in'] ?: $report()->present[$p->id]['out'],
+                    'status' => $report()->present[$p->id]['status'],
+                    'on_list' => $report()->isOnList($p),
+                ]),
                 'extras' => $report()->extras()->values()->map->card(),
             ]),
             'attendees' => Inertia::optional(fn () => $event->attendees()->orderBy('squadron')->orderBy('surname')->get()->map->card()),
@@ -121,6 +126,22 @@ class EventController extends Controller
 
         return back()->with($result['status'] === 'ok' ? 'success' : 'error',
             ($result['status'] === 'ok' ? 'Marked present: ' : $result['message'].': ')."{$person->rank} {$person->full_name}");
+    }
+
+    /** Take someone off the present list again: their scans for this event are deleted. */
+    public function removePresent(Event $event, Personnel $person): RedirectResponse
+    {
+        $deleted = WriteLock::run(fn () => Scan::where('event_id', $event->id)->where('personnel_id', $person->id)->delete());
+
+        return back()->with('success', "{$person->rank} {$person->full_name} is no longer present ($deleted scans deleted).");
+    }
+
+    /** Empty the attendee list so a new one can be uploaded. */
+    public function clearAttendees(Event $event): RedirectResponse
+    {
+        $removed = WriteLock::run(fn () => $event->attendees()->detach());
+
+        return back()->with('success', "Attendee list emptied ($removed removed). Upload the list for this event.");
     }
 
     public function clearScans(Event $event): RedirectResponse

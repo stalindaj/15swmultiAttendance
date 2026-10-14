@@ -37,11 +37,13 @@ Route::middleware(['laptop', 'auth', 'admin'])->group(function () {
         Route::delete('/events/{event}', [EventController::class, 'destroy']);
         Route::get('/events/{event}/export', [EventController::class, 'export']);
         Route::post('/events/{event}/present/{person}', [EventController::class, 'markPresent']);
+        Route::delete('/events/{event}/present/{person}', [EventController::class, 'removePresent']);
         Route::post('/events/{event}/scans/clear', [EventController::class, 'clearScans']);
 
         Route::post('/events/{event}/attendees/upload', [EventAttendeeController::class, 'upload']);
         Route::get('/events/{event}/attendees/preview/{token}', [EventAttendeeController::class, 'preview']);
         Route::post('/events/{event}/attendees/import', [EventAttendeeController::class, 'import']);
+        Route::post('/events/{event}/attendees/clear', [EventController::class, 'clearAttendees']);
         Route::delete('/events/{event}/attendees/{person}', [EventAttendeeController::class, 'destroy']);
 
         Route::post('/confirm', [ReviewController::class, 'confirm']);

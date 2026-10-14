@@ -73,6 +73,22 @@ class EventTest extends TestCase
             ->where('events.0.name', 'SAFETY MEETING')->where('events.0.attendees', 2));
     }
 
+    public function test_a_new_event_starts_with_an_empty_list_and_can_be_emptied_again(): void
+    {
+        $this->seedRoster();
+        $old = $this->makeEvent(['name' => 'Last formation']);     // an event that already has the whole roster
+        $this->actingAs($this->admin());
+
+        $this->post('/events', ['name' => 'SAFETY MEETING', 'event_date' => '2026-09-17']);
+        $new = Event::where('name', 'SAFETY MEETING')->sole();
+
+        $this->assertSame(0, $new->attendees()->count());
+        $this->get("/events/{$new->id}")->assertInertia(fn (Assert $page) => $page->where('stats.expected', 0));
+
+        $this->post("/events/{$old->id}/attendees/clear")->assertSessionHas('success');
+        $this->assertSame([0, 6], [$old->attendees()->count(), Personnel::count()]);   // only the list is emptied
+    }
+
     public function test_list_upload_can_add_to_or_replace_the_list(): void
     {
         $this->seedRoster();

@@ -61,8 +61,11 @@ function Item({ p, onSearch }) {
     const only = p.office_matches.length === 1 ? p.office_matches[0] : null;
     const recommendedId = only && (only.rank_match || !p.parsed.rank) ? only.id : null;
 
-    const walkIn = () => {
-        const first = prompt(`Add “${p.qr_text}” as a walk-in (not on the roster).\nFirst name (optional):`, '');
+    // One click: the name on the ID is enough. (Someone already in the roster is used, not added twice.)
+    const walkIn = () => confirm(p.qr_text, { new_person: { first_name: '' } });
+
+    const walkInNamed = () => {
+        const first = prompt(`Add “${p.qr_text}” as a walk-in.\nFirst name:`, '');
         if (first !== null) confirm(p.qr_text, { new_person: { first_name: first.trim() } });
     };
 
@@ -84,7 +87,8 @@ function Item({ p, onSearch }) {
             ))}
             <div className="mt-2 flex flex-wrap gap-1.5">
                 <button className="btn btn-sm" onClick={() => onSearch(p)}>Search other name</button>
-                <button className="btn btn-sm" onClick={walkIn}>Add as walk-in</button>
+                <button className="btn btn-sm" onClick={walkIn} title={`Record “${fam}” from the ID as it is`}>Add as walk-in</button>
+                <button className="btn btn-sm" onClick={walkInNamed} title="Add as walk-in and type the first name">+ first name…</button>
             </div>
         </div>
     );

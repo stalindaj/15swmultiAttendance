@@ -83,8 +83,7 @@ export default function EventShow({ event, fields, stats, bySquadron, arrivals, 
             <section className="mb-4 grid grid-cols-[repeat(auto-fit,minmax(160px,1fr))] gap-3">
                 <Kpi label="Present (on list)" value={stats.present} tone="ok" sub={`of ${stats.expected} on the list · ${pct}%`} progress={pct} />
                 <Kpi label="Inside now" value={stats.inside} sub="Status IN (timed in, not out)" />
-                <Kpi label="Unaccounted" value={stats.unaccounted} tone="bad" sub="On the list, on duty, not scanned" />
-                <Kpi label="Excused per PSR" value={stats.excused} sub="Deployed, leave, DS, schooling…" />
+                <Kpi label="Absent" value={stats.absent} tone="bad" sub="On the list, not scanned" />
                 <Kpi label="Extras" value={stats.extras} sub="Came, but not on the list" />
                 <Kpi label="To confirm" value={pending.length} tone="warn" sub="New IDs waiting for your check" />
             </section>

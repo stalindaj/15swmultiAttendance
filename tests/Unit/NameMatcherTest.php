@@ -45,6 +45,12 @@ class NameMatcherTest extends TestCase
         $this->assertNotSame(NameMatcher::rankKey('SSG'), NameMatcher::rankKey('TSg'));
     }
 
+    public function test_rank_key_treats_civilian_hr_spellings_as_one_rank(): void
+    {
+        $this->assertSame(NameMatcher::rankKey('CHR'), NameMatcher::rankKey('CIVHR'));
+        $this->assertNotSame(NameMatcher::rankKey('CHR'), NameMatcher::rankKey('CPT'));
+    }
+
     public function test_qr_unit_matches_office_or_squadron(): void
     {
         $this->assertTrue(NameMatcher::unitMatches('CEIS', 'ODCEIS', 'HAS'));

@@ -220,6 +220,33 @@ class ScanFlowTest extends TestCase
         $this->assertSame(['CHR', 'SANTOS', 'CEIS', 'Juan Miguel SANTOS'], [$person->rank, $person->surname, $person->office, $person->full_name]);
     }
 
+    public function test_adding_a_walk_in_whose_name_is_in_the_roster_uses_that_person(): void
+    {
+        $r = $this->seedRoster();
+        $this->actingAs($this->scanner())->scan('MAJ VILLAFUERTE PAF, CEIS');
+
+        // One click, no first name typed: it must not become a second “Villafuerte”.
+        $this->actingAs($this->admin())
+            ->post('/confirm', ['qr_text' => 'MAJ VILLAFUERTE PAF, CEIS', 'new_person' => ['first_name' => '']]);
+
+        $this->assertSame($r['villafuerte']->id, Scan::sole()->personnel_id);
+        $this->assertSame(0, Personnel::where('is_walk_in', true)->count());
+    }
+
+    public function test_moving_a_scan_to_the_right_person_removes_the_leftover_walk_in(): void
+    {
+        $r = $this->seedRoster();
+        $this->actingAs($this->scanner())->scan('SSG SANTOS, ODL');
+        $admin = $this->admin();
+        $this->actingAs($admin)->post('/confirm', ['qr_text' => 'SSG SANTOS, ODL', 'new_person' => ['first_name' => 'Juan']]);
+        $walkIn = Personnel::where('is_walk_in', true)->sole();
+
+        $this->actingAs($admin)->post('/scans/'.Scan::sole()->id.'/assign', ['personnel_id' => $r['ocana']->id]);
+
+        $this->assertSame($r['ocana']->id, Scan::sole()->personnel_id);
+        $this->assertNull(Personnel::find($walkIn->id));
+    }
+
     public function test_records_pc_can_void_a_scan_and_move_it_to_another_person(): void
     {
         $r = $this->seedRoster();
@@ -251,10 +278,15 @@ class ScanFlowTest extends TestCase
                 ->where('stats.present', 1)
                 ->where('stats.excused', 1)          // A2C Dela Cruz is DEPLOYED per PSR
                 ->where('stats.unaccounted', 4)
+                ->where('stats.absent', 5)           // one list on screen: excused and unaccounted together
                 ->missing('absent')                  // optional prop: only sent when asked for
                 ->reloadOnly('absent', fn (Assert $reload) => $reload
-                    ->has('absent.unaccounted', 4)
-                    ->has('absent.excused', 1)
+                    ->has('absent.absent', 5)
+                    ->has('absent.present', 1)
                     ->has('absent.extras', 0)));
+
+        // Marked present by mistake: taking them off the list again deletes that scan.
+        $this->actingAs($admin)->delete("/events/{$event->id}/present/{$r['ocana']->id}")->assertSessionHas('success');
+        $this->assertSame(0, Scan::where('event_id', $event->id)->count());
     }
 }
