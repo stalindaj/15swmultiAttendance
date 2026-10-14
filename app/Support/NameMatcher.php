@@ -74,10 +74,15 @@ final class NameMatcher
         return implode('', $tokens);
     }
 
-    /** "SSg (T)" and "SSG" compare equal. */
+    /** The same rank written differently on different IDs: "CIVHR BAGUIO" and "CHR BAGUIO". */
+    private const RANK_SYNONYMS = ['CIVHR' => 'CHR', 'CIVILIANHR' => 'CHR'];
+
+    /** "SSg (T)" and "SSG" compare equal; so do "CHR" and "CIVHR". */
     public static function rankKey(?string $s): string
     {
-        return str_replace(' ', '', preg_replace('/ T$/', '', self::norm($s)));
+        $key = str_replace(' ', '', preg_replace('/ T$/', '', self::norm($s)));
+
+        return self::RANK_SYNONYMS[$key] ?? $key;
     }
 
     /** "CHR SANTOS, CEIS" -> ['rank' => 'CHR', 'surname' => 'SANTOS', 'unit' => 'CEIS'] */

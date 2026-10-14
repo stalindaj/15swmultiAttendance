@@ -74,6 +74,18 @@ class AttendanceReport
         return isset($this->onList[$p->id]);
     }
 
+    /** Everyone counted present, on the list or not. */
+    public function presentPeople(): Collection
+    {
+        return $this->people->filter(fn (Personnel $p) => $this->isPresent($p));
+    }
+
+    /** Everyone on the list who has not scanned, excused or not: one list for the dashboard. */
+    public function absent(): Collection
+    {
+        return $this->roster()->filter(fn ($p) => ! $this->isPresent($p));
+    }
+
     /** On the list, not scanned, and the PSR says they should be here. */
     public function unaccounted(): Collection
     {
@@ -141,7 +153,7 @@ class AttendanceReport
     }
 
     /**
-     * @return array{expected: int, present: int, excused: int, unaccounted: int, extras: int, inside: int}
+     * @return array{expected: int, present: int, absent: int, excused: int, unaccounted: int, extras: int, inside: int}
      */
     public function stats(): array
     {
@@ -150,6 +162,7 @@ class AttendanceReport
         return [
             'expected' => $roster->count(),
             'present' => $roster->filter(fn ($p) => $this->isPresent($p))->count(),
+            'absent' => $this->absent()->count(),
             'excused' => $this->excused()->count(),
             'unaccounted' => $this->unaccounted()->count(),
             'extras' => $this->extras()->count(),

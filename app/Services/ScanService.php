@@ -183,18 +183,57 @@ class ScanService
         }));
     }
 
+    /**
+     * Add someone who isn't on the event's list. The same name is never added twice: if the
+     * roster already has this rank + family name (and the first names don't disagree), that
+     * person is used instead of a second record.
+     */
     public function createWalkIn(array $data, ?string $qrText): Personnel
     {
         $parsed = $qrText ? NameMatcher::parseQr($qrText) : ['rank' => '', 'surname' => '', 'unit' => ''];
-
-        return Personnel::create([
+        $fields = [
             'rank' => $data['rank'] ?? $parsed['rank'],
             'surname' => ($data['surname'] ?? '') ?: $parsed['surname'],
             'first_name' => $data['first_name'] ?? '',
             'office' => ($data['office'] ?? '') ?: $parsed['unit'],
             'squadron' => $data['squadron'] ?? '',
-            'is_walk_in' => true,
-        ]);
+        ];
+
+        if ($existing = $this->sameNameInRoster($fields['rank'], $fields['surname'], $fields['first_name'])) {
+            // Keep what the roster already knows; only fill in blanks from the ID.
+            $existing->fill(array_filter($fields, fn ($v, $f) => $v !== '' && $existing->{$f} === '', ARRAY_FILTER_USE_BOTH))->save();
+
+            return $existing;
+        }
+
+        return Personnel::create($fields + ['is_walk_in' => true]);
+    }
+
+    /**
+     * The one person already in the roster with this name, or null when there is none or the
+     * name is shared by several people (then a human picks from the candidate list).
+     */
+    public function sameNameInRoster(string $rank, string $surname, string $firstName): ?Personnel
+    {
+        $surnameKey = NameMatcher::surnameKey($surname);
+        if ($surnameKey === '') {
+            return null;
+        }
+        $rankKey = NameMatcher::rankKey($rank);
+        $wanted = array_values(array_filter(explode(' ', NameMatcher::norm($firstName))));
+
+        $matches = Personnel::where('surname_key', $surnameKey)->get()->filter(function (Personnel $p) use ($rankKey, $wanted) {
+            $theirRank = NameMatcher::rankKey($p->rank);
+            if ($rankKey !== '' && $theirRank !== '' && $theirRank !== $rankKey) {
+                return false;
+            }
+            $theirs = array_values(array_filter(explode(' ', NameMatcher::norm($p->first_name))));
+
+            // No first name on either side, or one is contained in the other ("JEAN" vs "JEAN MARIE").
+            return ! $wanted || ! $theirs || ! array_diff($wanted, $theirs) || ! array_diff($theirs, $wanted);
+        });
+
+        return $matches->count() === 1 ? $matches->first() : null;
     }
 
     /** Point a QR text at a person and move every scan of that QR (in every event) to them. */
@@ -212,6 +251,9 @@ class ScanService
         foreach ($affected->pluck('event_id')->unique() as $eventId) {
             $this->recomputePerson($pid, $eventId);
         }
+        foreach ($affected->pluck('personnel_id')->unique() as $old) {
+            $this->forgetEmptyWalkIn($old, $pid);
+        }
     }
 
     public function assign(Scan $scan, int $pid): void
@@ -228,7 +270,25 @@ class ScanService
                 $this->recomputePerson($old, $scan->event_id);
             }
             $this->recomputePerson($pid, $scan->event_id);
+            $this->forgetEmptyWalkIn($old, $pid);
         }));
+    }
+
+    /**
+     * A walk-in only exists because of their scans. Once the last one has been moved to the
+     * right person, drop the leftover record instead of leaving a double in the roster.
+     */
+    private function forgetEmptyWalkIn(?int $pid, int $movedTo): void
+    {
+        if ($pid === null || $pid === $movedTo) {
+            return;
+        }
+        $person = Personnel::find($pid);
+        if ($person?->is_walk_in && ! Scan::where('personnel_id', $pid)->exists()) {
+            QrLink::where('personnel_id', $pid)->delete();
+            DB::table('event_attendees')->where('personnel_id', $pid)->delete();
+            $person->delete();
+        }
     }
 
     public function void(Scan $scan): void

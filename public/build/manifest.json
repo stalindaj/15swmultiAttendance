@@ -1,17 +1,17 @@
 {
-  "_AdminLayout-BpbzVOpC.js": {
-    "file": "assets/AdminLayout-BpbzVOpC.js",
+  "_AdminLayout-DUEa-wgZ.js": {
+    "file": "assets/AdminLayout-DUEa-wgZ.js",
     "name": "AdminLayout",
     "imports": [
       "resources/js/app.jsx"
     ]
   },
-  "_ImportWizard-BP8ej9nx.js": {
-    "file": "assets/ImportWizard-BP8ej9nx.js",
+  "_ImportWizard-CZ0ZAHuU.js": {
+    "file": "assets/ImportWizard-CZ0ZAHuU.js",
     "name": "ImportWizard",
     "imports": [
       "resources/js/app.jsx",
-      "_AdminLayout-BpbzVOpC.js"
+      "_AdminLayout-DUEa-wgZ.js"
     ]
   },
   "_people-DdBHgKXJ.js": {
@@ -19,17 +19,17 @@
     "name": "people"
   },
   "resources/js/Pages/Accounts.jsx": {
-    "file": "assets/Accounts-CjBl8tqG.js",
+    "file": "assets/Accounts-BGv3BFq9.js",
     "name": "Accounts",
     "src": "resources/js/Pages/Accounts.jsx",
     "isDynamicEntry": true,
     "imports": [
       "resources/js/app.jsx",
-      "_AdminLayout-BpbzVOpC.js"
+      "_AdminLayout-DUEa-wgZ.js"
     ]
   },
   "resources/js/Pages/Auth/Login.jsx": {
-    "file": "assets/Login-BcGeYJtx.js",
+    "file": "assets/Login-D1BOKdR3.js",
     "name": "Login",
     "src": "resources/js/Pages/Auth/Login.jsx",
     "isDynamicEntry": true,
@@ -38,41 +38,41 @@
     ]
   },
   "resources/js/Pages/Events/Index.jsx": {
-    "file": "assets/Index-CsP5bmPi.js",
+    "file": "assets/Index-f0rurGc7.js",
     "name": "Index",
     "src": "resources/js/Pages/Events/Index.jsx",
     "isDynamicEntry": true,
     "imports": [
       "resources/js/app.jsx",
-      "_AdminLayout-BpbzVOpC.js"
+      "_AdminLayout-DUEa-wgZ.js"
     ]
   },
   "resources/js/Pages/Events/Show.jsx": {
-    "file": "assets/Show-BEiVXh2u.js",
+    "file": "assets/Show-BokHk-cl.js",
     "name": "Show",
     "src": "resources/js/Pages/Events/Show.jsx",
     "isDynamicEntry": true,
     "imports": [
       "resources/js/app.jsx",
-      "_AdminLayout-BpbzVOpC.js",
+      "_AdminLayout-DUEa-wgZ.js",
       "_people-DdBHgKXJ.js",
-      "_ImportWizard-BP8ej9nx.js"
+      "_ImportWizard-CZ0ZAHuU.js"
     ]
   },
   "resources/js/Pages/Roster.jsx": {
-    "file": "assets/Roster-puqJBcAm.js",
+    "file": "assets/Roster-BxJNfeT6.js",
     "name": "Roster",
     "src": "resources/js/Pages/Roster.jsx",
     "isDynamicEntry": true,
     "imports": [
       "resources/js/app.jsx",
-      "_ImportWizard-BP8ej9nx.js",
-      "_AdminLayout-BpbzVOpC.js",
+      "_ImportWizard-CZ0ZAHuU.js",
+      "_AdminLayout-DUEa-wgZ.js",
       "_people-DdBHgKXJ.js"
     ]
   },
   "resources/js/Pages/Scan.jsx": {
-    "file": "assets/Scan-ByK9IMhs.js",
+    "file": "assets/Scan-BrDlS9ZD.js",
     "name": "Scan",
     "src": "resources/js/Pages/Scan.jsx",
     "isDynamicEntry": true,
@@ -82,17 +82,17 @@
     ]
   },
   "resources/js/Pages/System/UpdateDatabase.jsx": {
-    "file": "assets/UpdateDatabase-D83kTTcQ.js",
+    "file": "assets/UpdateDatabase-Dwdj8gA-.js",
     "name": "UpdateDatabase",
     "src": "resources/js/Pages/System/UpdateDatabase.jsx",
     "isDynamicEntry": true,
     "imports": [
       "resources/js/app.jsx",
-      "_AdminLayout-BpbzVOpC.js"
+      "_AdminLayout-DUEa-wgZ.js"
     ]
   },
   "resources/js/app.jsx": {
-    "file": "assets/app-C5TnK1jl.js",
+    "file": "assets/app-D4XL5cRc.js",
     "name": "app",
     "src": "resources/js/app.jsx",
     "isEntry": true,
